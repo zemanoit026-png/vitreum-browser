@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vitreum Ultimate Browser</title>
+  <style>
+    :root {
+      --accent-color: #8b5cf6; --accent-glow: rgba(139, 92, 246, 0.5); --bg-primary: #05040a;
+      --text-color: #ffffff; --sidebar-bg: rgba(10, 8, 18, 0.95); --panel-bg: rgba(14, 11, 24, 0.95);
+      --custom-bg: none; --glass-blur: 25px; --clock-color: #ffffff; --date-color: #aaaaaa; --weather-color: #8b5cf6;
+    }
+    [data-theme="light"] {
+      --bg-primary: #f3f4f6; --text-color: #1f2937; --sidebar-bg: rgba(255, 255, 255, 0.95);
+      --panel-bg: rgba(249, 250, 251, 0.95); --accent-color: #7c3aed; --accent-glow: rgba(124, 58, 237, 0.3);
+      --clock-color: #1f2937; --date-color: #4b5563; --weather-color: #7c3aed;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-image: var(--custom-bg); background-color: var(--bg-primary); background-size: cover; background-position: center; background-attachment: fixed; color: var(--text-color); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background 0.3s, color 0.3s; user-select: none; }
+
+    /* УБИРАЕМ СТРЕЛКИ WINDOWS */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.4); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+    ::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
+    ::-webkit-scrollbar-corner { background: transparent; }
+
+    .svg-icon { width: 16px; height: 16px; fill: currentColor; display: inline-block; flex-shrink: 0; }
+    .tile-icon { width: 22px; height: 22px; fill: var(--accent-color); display: inline-block; flex-shrink: 0; }
+    .tile-img { width: 22px; height: 22px; border-radius: 4px; object-fit: contain; }
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { pointer-events: auto; background: var(--panel-bg); backdrop-filter: blur(20px); border: 1px solid var(--accent-color); color: var(--text-color); padding: 12px 18px; border-radius: 12px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; user-select: none; }
+    @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    
+    #top-download-popup { display: none; position: absolute; top: 80px; right: 60px; width: 360px; background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--accent-color); border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85); z-index: 999999; padding: 14px; animation: popDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; user-select: none; }
+    @keyframes popDown { from { transform: translateY(-15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; font-weight: bold; color: var(--accent-color); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; }
+    #top-download-body { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px; }
+
+    .auth-card { width: 420px; background: rgba(15, 12, 26, 0.98); border: 1px solid var(--accent-color); border-radius: 18px; padding: 26px; box-shadow: 0 0 60px var(--accent-glow); text-align: center; color: #fff; }
+    .auth-tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 8px; margin: 14px 0; }
+    .auth-tab-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #888; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .auth-tab-btn.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 600; }
+    .auth-input { width: 100%; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; outline: none; margin-bottom: 8px; font-size: 12px; }
+    .auth-btn { width: 100%; padding: 10px; background: var(--accent-color); border: none; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px; opacity: 0.5; pointer-events: none; transition: 0.2s; }
+    .auth-btn.unlocked { opacity: 1; pointer-events: auto; }
+    .google-btn { width: 100%; padding: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; }
+    .google-btn:hover { background: rgba(255,255,255,0.15); }
+    .terms-box { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #aaa; text-align: left; margin: 14px 0; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
+    .terms-box input { accent-color: var(--accent-color); width: 15px; height: 15px; cursor: pointer; }
+    
+    #custom-context-menu { display: none; position: fixed; z-index: 9999999; width: 220px; background: var(--panel-bg); backdrop-filter: blur(20px); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 0 0 6px 0; font-size: 12px; user-select: none; }
+    .ctx-drag-handle { display: flex; align-items: center; justify-content: center; height: 16px; padding: 2px 0; margin-bottom: 2px; background: rgba(139, 92, 246, 0.15); border-bottom: 1px solid rgba(139, 92, 246, 0.25); border-top-left-radius: 9px; border-top-right-radius: 9px; color: var(--accent-color); font-size: 11px; font-weight: bold; letter-spacing: 3px; cursor: grab; }
+    .ctx-drag-handle:active { cursor: grabbing; background: rgba(139, 92, 246, 0.3); }
+    .ctx-item { padding: 8px 14px; color: var(--text-color); cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .ctx-item:hover { background: rgba(139, 92, 246, 0.3); color: #fff; }
+    .ctx-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+
+    #tile-modal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); z-index: 99998; align-items: center; justify-content: center; }
+    .modal-card { width: 340px; background: var(--panel-bg); border: 1px solid var(--accent-color); border-radius: 14px; padding: 20px; text-align: center; box-shadow: 0 0 30px var(--accent-glow); }
+    
+    #top-bar { height: 38px; background: var(--sidebar-bg); display: flex; align-items: center; padding-left: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); gap: 6px; flex-shrink: 0; -webkit-app-region: drag; user-select: none; }
+    #tabs-wrapper, #new-tab-btn, .window-controls { -webkit-app-region: no-drag; }
+    #tabs-wrapper { display: flex; gap: 4px; flex: 1; overflow-x: auto; overflow-y: hidden; align-items: center; scrollbar-width: none; -ms-overflow-style: none; }
+    #tabs-wrapper::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    .tab { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); padding: 6px 10px; border-radius: 8px 8px 0 0; font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; min-width: 80px; max-width: 180px; flex-shrink: 1; color: var(--text-color); opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.15s ease; }
+    .tab span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .tab.active { background: rgba(139, 92, 246, 0.2); opacity: 1; border-color: var(--accent-color); }
+    .tab-close { font-size: 11px; opacity: 0.5; padding: 2px 4px; border-radius: 4px; margin-left: auto; flex-shrink: 0; }
+    .tab-close:hover { background: rgba(255,255,255,0.2); opacity: 1; }
+    #new-tab-btn { background: transparent; border: none; color: var(--accent-color); font-size: 18px; width: 30px; height: 30px; cursor: pointer; font-weight: bold; flex-shrink: 0; }
+    .window-controls { display: flex; height: 100%; align-items: center; margin-left: auto; flex-shrink: 0; }
+    .win-btn { width: 44px; height: 100%; background: transparent; border: none; color: var(--text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .win-btn:hover { background: rgba(255,255,255,0.1); }
+    .win-btn-close:hover { background: #ef4444 !important; color: #fff; }
+    
+    #nav-bar { height: 44px; background: var(--sidebar-bg); display: flex; align-items: center; padding: 0 10px; gap: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); flex-shrink: 0; position: relative; user-select: none; }
+    .glass-btn { width: 30px; height: 28px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-color); position: relative; }
+    .glass-btn:hover { border-color: var(--accent-color); background: rgba(139, 92, 246, 0.2); }
+    .nav-select { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 6px; border-radius: 6px; font-size: 11px; outline: none; cursor: pointer; }
+    #address-bar { flex: 1; height: 30px; padding: 0 14px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(0, 0, 0, 0.4); color: var(--text-color); font-size: 12px; outline: none; }
+    
+    #main-layout { flex: 1; display: flex; position: relative; overflow: hidden; width: 100%; height: calc(100vh - 82px); }
+    #opera-sidebar { width: 56px; background: var(--sidebar-bg); border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 8px; z-index: 10; flex-shrink: 0; user-select: none; }
+    .sidebar-btn { width: 40px; height: 40px; border-radius: 8px; background: transparent; border: none; color: var(--text-color); opacity: 0.7; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+    .sidebar-btn:hover { background: rgba(139, 92, 246, 0.25); opacity: 1; }
+    .dl-badge { position: absolute; top: -2px; right: -2px; background: #3b82f6; color: white; font-size: 9px; font-weight: bold; border-radius: 10px; padding: 1px 5px; display: none; }
+    
+    #side-drawer { width: 460px; min-width: 320px; max-width: 90vw; background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border-right: 1px solid rgba(255, 255, 255, 0.08); display: none; flex-direction: column; padding: 16px; z-index: 9; flex-shrink: 0; overflow: hidden; position: relative; user-select: none; }
+    #drawer-resizer { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; background: rgba(255,255,255,0.05); }
+    #drawer-resizer:hover { background: var(--accent-color); }
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; color: var(--accent-color); font-size: 13px; }
+    #drawer-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+    
+    .download-card { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .dl-top-row { display: flex; align-items: center; gap: 10px; }
+    .dl-info { flex: 1; overflow: hidden; }
+    .dl-filename { font-size: 11px; font-weight: 600; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .dl-status-text { font-size: 10px; color: #aaa; margin-top: 2px; }
+    .dl-progress-bg { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+    .dl-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease; }
+    .dl-progress-fill.completed { background: #10b981; width: 100% !important; }
+    .dl-btn-action { align-self: flex-end; font-size: 10px; padding: 4px 10px; background: rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; color: var(--text-color); border:none; margin-top: 4px; }
+    .dl-btn-action:hover { background: var(--accent-color); }
+    .history-card { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .history-card:hover { background: rgba(139, 92, 246, 0.2); }
+    .history-url { font-size: 11px; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500; cursor: pointer; flex: 1; }
+    .history-delete-btn { background: transparent; border: none; color: #ef4444; font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .history-delete-btn:hover { background: rgba(239, 68, 68, 0.2); }
+    #content-area { flex: 1; position: relative; height: 100%; }
+    .tab-pane { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; flex-direction: column; }
+    .tab-pane.active { display: flex; }
+    webview { width: 100%; height: 100%; border: none; outline: none; }
+    .start-screen { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 20px; overflow-y: auto; background: var(--panel-bg); user-select: none; }
+    .live-clock { font-size: 56px; font-weight: 200; letter-spacing: 2px; color: var(--clock-color); text-shadow: 0 0 35px var(--accent-glow); }
+    .live-date { font-size: 13px; color: var(--date-color); margin-bottom: 8px; text-transform: capitalize; }
+    .weather-widget { font-size: 12px; color: var(--weather-color); background: rgba(18, 14, 30, 0.85); border: 1px solid rgba(255,255,255,0.12); padding: 8px 18px; border-radius: 20px; margin-bottom: 22px; text-align: center; }
+    .shimmer-logo { font-size: 38px; font-weight: 800; margin-bottom: 22px; background: linear-gradient(90deg, #3b82f6, var(--accent-color), #ec4899, #3b82f6); background-size: 300% 100%; animation: shimmerFlow 6s linear infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; cursor: pointer; user-select: none; }
+    .hero-search-box { width: 100%; max-width: 650px; padding: 14px 22px; border-radius: 24px; border: 1px solid var(--accent-color); background: rgba(18, 14, 30, 0.88); color: white; font-size: 14px; outline: none; box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+    .tiles-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; width: 100%; max-width: 680px; }
+    .tile-card { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 12px; border-radius: 12px; text-align: center; cursor: pointer; font-size: 11px; color: var(--text-color); transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+    .tile-card:hover { background: rgba(139, 92, 246, 0.3); border-color: var(--accent-color); transform: translateY(-2px); }
+    .tile-delete-btn { position: absolute; top: 4px; right: 6px; font-size: 10px; color: #ef4444; background: rgba(0,0,0,0.4); border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.2s; }
+    .tile-card:hover .tile-delete-btn { opacity: 1; }
+    #settings-popup { display: none; position: fixed; inset: 0; z-index: 3000; overflow-y: auto; background: rgba(8,8,14,0.94); backdrop-filter: blur(var(--glass-blur)); color: var(--text-color); font-size: 13px; animation: popIn .22s cubic-bezier(.2,.8,.2,1); }
+    .settings-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; background: rgba(8,8,14,0.9); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .settings-title { font-size: 22px; font-weight: 800; }
+    .settings-close { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: var(--text-color); font-size: 16px; cursor: pointer; transition: background .15s, transform .2s; }
+    .settings-close:hover { background: rgba(255,255,255,0.12); transform: rotate(90deg); }
+    .settings-body { max-width: 860px; margin: 0 auto; padding: 24px 32px 70px; display: flex; flex-direction: column; gap: 18px; }
+    .settings-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 18px 22px; }
+    .settings-card h3 { margin: 0 0 10px; font-size: 15px; color: var(--accent-color); }
+    .settings-card .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; margin: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .settings-card .settings-row:last-child { border-bottom: none; }
+    .settings-card input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer; }
+    .settings-hint { font-size: 11px; color: #8f8fa3; margin-top: 6px; line-height: 1.5; }
+    .kbd-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: 12px; color: #b8b8c8; }
+    .settings-group { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .settings-group label { display: block; font-size: 10px; color: var(--accent-color); margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
+    .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .settings-row input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer; }
+    .color-picker-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .color-picker-row input[type="color"] { border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; background: transparent; }
+    input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
+    #exit-confirm { display:none; position:fixed; inset:0; z-index:2147483100; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); }
+    .exit-card { width:380px; max-width:90vw; padding:28px 26px 24px; text-align:center; background:var(--panel-bg); border:1px solid var(--accent-color); border-radius:18px; box-shadow:0 20px 70px rgba(0,0,0,0.9); color:var(--text-color); }
+    .exit-title { font-size:20px; font-weight:700; margin-bottom:10px; }
+    .exit-text { font-size:13px; color:#b8b8c8; line-height:1.5; }
+    .exit-files { font-size:12px; color:#8f8fa3; margin-top:10px; word-break:break-all; }
+    .exit-buttons { display:flex; gap:12px; margin-top:22px; }
+    .exit-btn { flex:1; padding:12px; border-radius:10px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:filter .15s, background .15s; }
+    .exit-stay { background:var(--accent-color); color:#0b0b10; border:none; }
+    .exit-stay:hover { filter:brightness(1.15); }
+    .exit-leave { background:transparent; color:#ff6b6b; border:1px solid rgba(255,107,107,0.5); }
+    .exit-leave:hover { background:rgba(255,107,107,0.12); }
+    #find-bar { display:none; position:absolute; top:92px; right:60px; z-index:1100; gap:8px; align-items:center; background:var(--panel-bg); border:1px solid var(--accent-color); border-radius:12px; padding:8px 10px; box-shadow:0 10px 40px rgba(0,0,0,.8); }
+    #custom-context-menu { z-index: 2147483000 !important; }
+    #side-drawer { user-select: none; -webkit-user-select: none; }
+    #side-drawer input, #side-drawer textarea { user-select: text; -webkit-user-select: text; }
+    @keyframes shimmerFlow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+    @keyframes popIn { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    #find-bar, #custom-context-menu, #top-download-popup { animation: popIn .16s cubic-bezier(.2,.8,.2,1); }
+    #exit-confirm { animation: fadeIn .18s ease-out; }
+    #exit-confirm .exit-card { animation: popIn .22s cubic-bezier(.2,.8,.2,1); }
+    .tab { transition: background .2s, color .2s, transform .15s; }
+    .tile-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), background .25s, border-color .25s, box-shadow .25s; }
+    .tile-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+    .tile-letter { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent-color); color: #fff; font-weight: 700; font-size: 14px; }
+    .greeting { font-size: 15px; opacity: .85; margin-bottom: 8px; }
+    .welcome-card { width: 100%; max-width: 520px; margin: 0 auto 20px; padding: 22px 24px; border-radius: 18px; background: rgba(255,255,255,0.05); border: 1px solid var(--accent-color); box-shadow: 0 10px 40px rgba(0,0,0,.5); text-align: center; animation: popIn .3s cubic-bezier(.2,.8,.2,1); }
+    .welcome-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .welcome-text { font-size: 12px; color: #b8b8c8; margin-bottom: 16px; line-height: 1.5; }
+    .welcome-actions { display: flex; flex-direction: column; gap: 10px; }
+    .welcome-secondary { padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: var(--text-color); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .welcome-secondary:hover { background: rgba(255,255,255,0.08); }
+    .welcome-close { margin-top: 12px; font-size: 11px; color: #777; cursor: pointer; text-decoration: underline; }
+    body.no-anim *, body.no-anim *::before, body.no-anim *::after { animation: none !important; transition: none !important; }
+    .google-btn-real { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:12px 16px; background:#fff; color:#3c4043; border:1px solid #dadce0; border-radius:10px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:background .15s, box-shadow .15s; }
+    .google-btn-real:hover { background:#f7f8f8; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+    .avatar-circle { width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; background:#4285f4; }
+    .avatar-circle.big { width:44px; height:44px; font-size:20px; flex-shrink:0; }
+    #profile-btn { border-radius:50%; }
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.18); border-radius:8px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    #tabs-wrapper::-webkit-scrollbar { display:none; height:0; }
+  </style>
+</head>
+<body>
+
+  <div id="toast-container"></div>
+
+  <div id="top-download-popup" onclick="event.stopPropagation()">
+    <div class="popup-header"><span>📥 Загрузки</span><span onclick="toggleTopDownloadPopup()" style="cursor:pointer; opacity:0.7;">✕</span></div>
+    <div id="top-download-body"><div style="color:#aaa; font-size:11px; text-align:center; padding:10px;">Нет активных загрузок.</div></div>
+  </div>
+
+  <div id="custom-context-menu">
+    <div class="ctx-drag-handle" id="ctx-drag-handle">⋮⋮</div>
+    <div class="ctx-item ctx-editable" data-action="undo">↶ Отменить</div>
+    <div class="ctx-item ctx-editable" data-action="redo">↷ Повторить</div>
+    <div class="ctx-divider ctx-editable"></div>
+    <div class="ctx-item ctx-editable" data-action="cut">✂ Вырезать</div>
+    <div class="ctx-item ctx-any-edit" data-action="copy">📋 Копировать</div>
+    <div class="ctx-item ctx-editable" data-action="paste">📄 Вставить</div>
+    <div class="ctx-divider ctx-any-edit"></div>
+    <div class="ctx-item ctx-selectall" data-action="selectAll">☑ Выделить всё</div>
+    <div class="ctx-item ctx-search" id="ctx-search-item" data-action="searchSelection">Найти в поиске</div>
+    <div class="ctx-divider ctx-link"></div>
+    <div class="ctx-item ctx-link" data-action="copyLink">🔗 Копировать адрес ссылки</div>
+    <div class="ctx-item ctx-link" data-action="openLinkNewTab">↗ Открыть ссылку в новой вкладке</div>
+    <div class="ctx-divider ctx-img"></div>
+    <div class="ctx-item ctx-img" data-action="downloadImg">Сохранить изображение</div>
+    <div class="ctx-item ctx-img" data-action="copyImage">Копировать изображение</div>
+    <div class="ctx-item ctx-img" data-action="openImgNewTab">Открыть изображение в новой вкладке</div>
+    <div class="ctx-divider ctx-page"></div>
+    <div class="ctx-item ctx-page" data-action="reload">⟳ Обновить страницу</div>
+    <div class="ctx-item ctx-page" data-action="inspect">🔍 Исследовать элемент</div>
+  </div>
+
+  <div id="tile-modal">
+    <div class="modal-card">
+      <div style="font-weight:600; color:var(--accent-color); margin-bottom:10px; font-size:13px;">Добавить сайт</div>
+      <input type="text" id="modal-site-name" placeholder="Название" class="auth-input">
+      <input type="text" id="modal-site-url" placeholder="URL" class="auth-input">
+      <div style="display:flex; gap:6px; margin-top:10px;">
+        <button class="auth-btn unlocked" style="background:rgba(255,255,255,0.1);" onclick="closeTileModal()">Отмена</button>
+        <button class="auth-btn unlocked" onclick="saveNewTile()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="top-bar">
+    <div id="tabs-wrapper"></div>
+    <button id="new-tab-btn" onclick="createTab()" title="Новая вкладка">+</button>
+    <div class="window-controls">
+      <button class="win-btn" onclick="minimizeWindow()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg></button>
+      <button class="win-btn" onclick="maximizeWindow()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6z"/></svg></button>
+      <button class="win-btn win-btn-close" onclick="closeWindow()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+  </div>
+
+  <div id="nav-bar">
+    <button class="glass-btn" onclick="goBack()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+    <button class="glass-btn" onclick="goForward()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+    <button class="glass-btn" onclick="reloadPage()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
+    <input type="text" id="address-bar" placeholder="Введите URL или запрос..." onkeydown="handleAddressInput(event)">
+    <button class="glass-btn" onclick="toggleTopDownloadPopup(event)"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span class="dl-badge" id="download-count-badge">0</span></button>
+    <button class="glass-btn" onclick="toggleBookmark()"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></button>
+    <button class="glass-btn" id="profile-btn" onclick="toggleProfile(event)" title="Профиль"><span id="profile-avatar" class="avatar-circle">V</span></button>
+    <button class="glass-btn" id="settings-btn" onclick="toggleSettings(event)"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+  </div>
+
+  <div id="main-layout">
+    <div id="opera-sidebar">
+      <button class="sidebar-btn" onclick="openDrawer('ai')"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 10.12h-3.12V7c0-1.1-.9-2-2-2H8.12C7.02 5 6.12 5.9 6.12 7v3.12H3c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h3.12V21c0 1.1.9 2 2 2h7.76c1.1 0 2-.9 2-2v-2.88H21c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zM8.12 7h7.76v3.12H8.12V7zm7.76 14H8.12v-3.12h7.76V21zm3.12-5h-3.12v-3.88h3.12V16zM5 11h3.12v3.88H5V11z"/></svg></button>
+      <button class="sidebar-btn" onclick="openDrawer('vpn')"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg></button>
+      <button class="sidebar-btn" onclick="openDrawer('history')"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
+      <button class="sidebar-btn" onclick="openDrawer('bookmarks')"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L9 18V5h10v13z"/></svg></button>
+      <button class="sidebar-btn" onclick="openDrawer('notes')"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      <div style="flex:1;"></div>
+      <button class="sidebar-btn" onclick="openDrawer('ping')" title="Измерить скорость и пинг (Яндекс Интернетометр)" style="font-weight:700; font-size:10px; opacity:1;">Пинг</button>
+      <button class="sidebar-btn" onclick="openDrawer('vk')" title="ВКонтакте (вход по QR-коду)" style="font-weight:800; font-size:14px; opacity:1; color:#4c9bff;">VK</button>
+    </div>
+
+    <div id="side-drawer">
+      <div id="drawer-resizer"></div>
+      <div class="drawer-header"><span id="drawer-title">Панель</span><span onclick="closeDrawer()" style="cursor:pointer;">✕</span></div>
+      <div id="drawer-body"></div>
+    </div>
+
+    <div id="content-area"></div>
+  </div>
+
+  <div id="settings-popup" onclick="event.stopPropagation()">
+    <div class="settings-head">
+      <div class="settings-title">Настройки</div>
+      <button class="settings-close" onclick="closeSettings()" title="Закрыть (Esc)">&#10005;</button>
+    </div>
+    <div class="settings-body">
+
+      <div class="settings-card" id="settings-profile">
+        <h3>Профиль</h3>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+          <div id="profile-avatar-big" class="avatar-circle big">V</div>
+          <input class="auth-input" id="profile-name" placeholder="Ваше имя" style="margin:0;" onchange="saveProfile()">
+        </div>
+        <div style="font-size:11px; color:#aaa; margin-bottom:6px;">Цвет профиля:</div>
+        <div id="profile-avatars" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+        <div id="google-status" style="font-size:12px; color:#aaa; margin:2px 0 10px;"></div>
+        <button class="google-btn-real" id="google-signin-btn" onclick="openGoogleSignIn()"></button>
+      </div>
+
+      <div class="settings-card">
+        <h3>Оформление</h3>
+        <div class="settings-row"><span>Режим темы</span><select class="auth-input" style="width:160px; margin:0;" id="theme-selector" onchange="changeTheme(this.value)"><option value="dark">Тёмная</option><option value="light">Светлая</option></select></div>
+        <div class="settings-row"><span>Акцентный цвет</span><input type="color" id="picker-accent" value="#8b5cf6" onchange="updateCustomColor('accent', this.value)"></div>
+        <div class="settings-row"><span>Цвет часов</span><input type="color" id="picker-clock" value="#ffffff" onchange="updateCustomColor('clock', this.value)"></div>
+        <div class="settings-row"><span>Размытие стекла</span><input type="range" id="blur-range" min="0" max="30" oninput="setFlag('blur', Number(this.value))"></div>
+        <div class="settings-row"><span>Плавные анимации</span><input type="checkbox" id="flag-anim" onchange="setFlag('anim', this.checked)"></div>
+        <div class="settings-row"><span>Масштаб страниц по умолчанию</span><select class="auth-input" style="width:160px; margin:0;" id="zoom-select" onchange="setFlag('zoom', Number(this.value)); applyZoomAll()"><option value="-2">70%</option><option value="-1">83%</option><option value="0">100%</option><option value="1">120%</option><option value="2">144%</option><option value="3">173%</option></select></div>
+        <div style="margin-top:10px; font-size:11px; color:#aaa;">Своя картинка фона:</div>
+        <input type="file" class="auth-input" accept="image/*" onchange="uploadBg(event)" style="margin-top:6px;">
+        <button class="auth-btn unlocked" style="background:rgba(239,68,68,0.2); color:#fca5a5; margin-top:8px; padding:8px;" onclick="removeBg()">Убрать фон</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>Главная и поиск</h3>
+        <div class="settings-row"><span>Поисковик по умолчанию</span><select class="auth-input" style="width:160px; margin:0;" id="default-search-selector" onchange="changeDefaultSearchEngine(this.value)"><option value="yandex">Яндекс</option><option value="google">Google</option><option value="bing">Bing</option><option value="duckduckgo">DuckDuckGo</option></select></div>
+        <div class="settings-row"><span>Домашняя страница</span><input class="auth-input" id="homepage-input" placeholder="Пусто = стартовая страница" style="width:260px; margin:0;" onchange="setHomepage(this.value)"></div>
+        <div class="settings-row"><span>Восстанавливать вкладки при запуске</span><input type="checkbox" id="restore-toggle" onchange="localStorage.setItem('vitreum_restore', this.checked)"></div>
+        <div class="settings-row"><span>Быстрое открытие VK (предзагрузка)</span><input type="checkbox" id="flag-preloadVk" onchange="setFlag('preloadVk', this.checked)"></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Регион</h3>
+        <div class="settings-row"><span>Страна</span><select class="auth-input" style="width:240px; margin:0;" id="region-country" onchange="onCountryChange()"></select></div>
+        <div id="region-current" style="font-size:12px; color:#10b981; margin-top:8px;"></div>
+        <div class="settings-hint">Меняет погоду на главной и язык, который видят сайты. Ваш IP-адрес при этом не меняется: чтобы открывались сервисы, закрытые в вашей стране, нужен VPN.</div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Защита и приватность</h3>
+        <div class="settings-row"><span>Блокировщик рекламы</span><input type="checkbox" id="adblock-toggle" checked onchange="toggleAdBlock(this)"></div>
+        <div class="settings-row"><span>Блокировать всплывающие окна</span><input type="checkbox" id="flag-blockPopups" onchange="setFlag('blockPopups', this.checked)"></div>
+        <div class="settings-row"><span>Разрешать сайтам камеру и микрофон</span><input type="checkbox" id="flag-allowMedia" onchange="setFlag('allowMedia', this.checked)"></div>
+        <div class="settings-row"><span>Просить сайты не отслеживать (DNT и GPC)</span><input type="checkbox" id="flag-dnt" onchange="setFlag('dnt', this.checked)"></div>
+        <div class="settings-row"><span>Очистить кэш, куки и данные сайтов</span><button class="auth-btn unlocked" style="margin:0; width:auto; padding:8px 16px;" onclick="clearSiteData()">Очистить</button></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Загрузки</h3>
+        <div class="settings-row"><span>Показывать панель при начале загрузки</span><input type="checkbox" id="flag-autoShowDownloads" onchange="setFlag('autoShowDownloads', this.checked)"></div>
+        <div class="settings-row"><span>Спрашивать при выходе, если идёт загрузка</span><input type="checkbox" id="flag-confirmExit" onchange="setFlag('confirmExit', this.checked)"></div>
+        <div class="settings-row"><span>Папка загрузок</span><button class="auth-btn unlocked" style="margin:0; width:auto; padding:8px 16px;" onclick="window.vitreumAPI?.openDownloads()">Открыть</button></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Система</h3>
+        <div class="settings-row"><span title="Отключает видеокарту. Включите, если Яндекс Алиса, игры или нейросети мигают">Режим совместимости графики</span><input type="checkbox" id="gfx-toggle" onchange="toggleGfxCompat(this)"></div>
+        <div class="settings-row"><span>Сбросить настройки оформления</span><button class="auth-btn unlocked" style="margin:0; width:auto; padding:8px 16px; background:rgba(239,68,68,0.2); color:#fca5a5;" onclick="resetSettings()">Сбросить</button></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>О программе и горячие клавиши</h3>
+        <div id="about-text" style="font-size:12px; color:#b8b8c8; margin-bottom:12px;"></div>
+        <div class="kbd-list">
+          <div>Ctrl+T: новая вкладка</div><div>Ctrl+W: закрыть вкладку</div>
+          <div>Ctrl+Shift+T: вернуть вкладку</div><div>Ctrl+Tab: следующая вкладка</div>
+          <div>Ctrl+L: адресная строка</div><div>Ctrl+F: поиск на странице</div>
+          <div>Ctrl+R / F5: обновить</div><div>Ctrl+Shift+R: обновить без кэша</div>
+          <div>Ctrl+D: закладка</div><div>Ctrl+P: печать</div>
+          <div>Ctrl+S: сохранить как PDF</div><div>Ctrl+Shift+S: снимок страницы</div>
+          <div>Ctrl + / Ctrl -: масштаб</div><div>F11: полный экран</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="exit-confirm">
+    <div class="exit-card">
+      <div class="exit-title">Идёт загрузка</div>
+      <div id="exit-text" class="exit-text"></div>
+      <div id="exit-files" class="exit-files"></div>
+      <div class="exit-buttons">
+        <button class="exit-btn exit-stay" onclick="hideExitConfirm()">Остаться</button>
+        <button class="exit-btn exit-leave" onclick="window.vitreumAPI?.confirmExit()">Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="find-bar">
+    <input id="find-input" class="auth-input" placeholder="Найти на странице" style="margin:0; width:200px;" oninput="doFind(true)" onkeydown="if(event.key==='Enter') doFind(false, !event.shiftKey); if(event.key==='Escape') closeFind();">
+    <span id="find-count" style="font-size:11px; color:#aaa; min-width:46px; text-align:center;"></span>
+    <button class="dl-btn-action" onclick="doFind(false, false)">Назад</button>
+    <button class="dl-btn-action" onclick="doFind(false, true)">Далее</button>
+    <button class="dl-btn-action" onclick="closeFind()">Закрыть</button>
+  </div>
+
+  <script>
+    let tabs = [], activeTabId = null, termsAccepted = false;
+    let authPassed = localStorage.getItem('vitreum_auth_passed') === 'true';
+    let historyList = JSON.parse(localStorage.getItem('vitreum_history') || '[]');
+    let bookmarksList = JSON.parse(localStorage.getItem('vitreum_bookmarks') || '[]');
+    let customTiles = JSON.parse(localStorage.getItem('vitreum_custom_tiles') || '[]');
+    let downloadsMap = {};
+    let activeDownloadsCount = 0;
+    let defaultSearchEngine = localStorage.getItem('vitreum_default_search') || 'bing';
+    if (defaultSearchEngine === 'deepseek') defaultSearchEngine = 'bing';
+    let currentCtxParams = null, isMenuDragging = false, menuDragOffsetX = 0, menuDragOffsetY = 0;
+    let vpnServersList = []; 
+    let useMonochromeIcons = JSON.parse(localStorage.getItem('vitreum_monochrome_icons') || 'false');
+
+    const svgIcons = {
+      youtube: `<svg class="tile-icon" viewBox="0 0 24 24"><path d="M21.58 7.19a2.84 2.84 0 0 0-2-2C17.82 4.67 12 4.67 12 4.67s-5.82 0-7.58.52a2.84 2.84 0 0 0-2 2C2 8.95 2 12 2 12s0 3.05.42 4.81a2.84 2.84 0 0 0 2 2c1.76.52 7.58.52 7.58.52s5.82 0 7.58-.52a2.84 2.84 0 0 0 2-2C22 15.05 22 12 22 12s0-3.05-.42-4.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>`,
+      github: `<svg class="tile-icon" viewBox="0 0 24 24"><path d="M12 1.27a11 11 0 0 0-3.48 21.46c.55.09.73-.24.73-.53v-1.85c-3.03.66-3.67-1.46-3.67-1.46-.5-1.27-1.22-1.61-1.22-1.61-.99-.68.08-.66.08-.66 1.1.08 1.68 1.13 1.68 1.13.98 1.68 2.56 1.2 3.18.92.1-.72.38-1.2.7-1.48-2.42-.28-4.97-1.21-4.97-5.39 0-1.19.43-2.16 1.13-2.92-.11-.28-.49-1.39.11-2.88 0 0 .92-.29 3 1.12a10.4 10.4 0 0 1 5.48 0c2.08-1.41 3-1.12 3-1.12.6 1.49.22 2.6.11 2.88.7.76 1.13 1.73 1.13 2.92 0 4.19-2.56 5.11-4.99 5.38.4.35.74 1.02.74 2.06v3.07c0 .3.18.63.74.52A11 11 0 0 0 12 1.27z"/></svg>`,
+      reddit: `<svg class="tile-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm5.01 11a1.27 1.27 0 0 1 .84 1.19 2.34 2.34 0 0 1-2.3 2.31 8.5 8.5 0 0 1-7.1 0 2.34 2.34 0 0 1-2.3-2.31 1.27 1.27 0 0 1 .84-1.19A3.3 3.3 0 0 1 7 11.5a3.5 3.5 0 0 1 3.5-3.5c1.1 0 2.1.5 2.8 1.3a3.5 3.5 0 0 1 2.8-1.3 3.5 3.5 0 0 1 3.5 3.5 3.3 3.3 0 0 1-.59 1.5z"/></svg>`,
+      deepseek: `<svg class="tile-icon" viewBox="0 0 24 24"><path d="M21 10.12h-3.12V7c0-1.1-.9-2-2-2H8.12C7.02 5 6.12 5.9 6.12 7v3.12H3c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h3.12V21c0 1.1.9 2 2 2h7.76c1.1 0 2-.9 2-2v-2.88H21c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2z"/></svg>`,
+      default: `<svg class="tile-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 13v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`
+    };
+
+    let eggClicks = 0;
+    function initEasterEgg() {
+      const logo = document.getElementById('easter-egg-logo');
+      if (!logo) return;
+      logo.addEventListener('click', () => {
+        eggClicks++;
+        if (eggClicks === 5) {
+          showToast('Ты нашел пасхалку! 🥚 Vitreum Ultimate Edition активирован!', 'success');
+          logo.style.background = 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)';
+          logo.style.webkitBackgroundClip = 'text';
+          eggClicks = 0;
+        }
+      });
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.animation = 'slideIn 0.3s reverse forwards'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    function minimizeWindow() { window.dispatchEvent(new CustomEvent('win-minimize')); }
+    function maximizeWindow() { window.dispatchEvent(new CustomEvent('win-maximize')); }
+    function closeWindow() { window.dispatchEvent(new CustomEvent('win-close')); }
+
+    const GOOGLE_G = '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+    function loginWithGoogle() { createTab('https://accounts.google.com/'); }
+    function createGoogleAccount() { createTab('https://accounts.google.com/signup'); }
+    function dismissWelcome() { localStorage.setItem('vitreum_welcomed', 'true'); document.querySelectorAll('.welcome-card').forEach(e => e.remove()); }
+    function welcomeHtml() {
+      if (localStorage.getItem('vitreum_welcomed') === 'true') return '';
+      return `<div class="welcome-card"><div class="welcome-title">Добро пожаловать в Vitreum</div><div class="welcome-text">Войдите в аккаунт Google, чтобы он запомнился в браузере, или создайте новый. Всё остальное доступно сразу.</div><div class="welcome-actions"><button class="google-btn-real" onclick="loginWithGoogle()">${GOOGLE_G}<span>Войти через аккаунт Google</span></button><button class="welcome-secondary" onclick="createGoogleAccount()">Создать аккаунт Google</button></div><div class="welcome-close" onclick="dismissWelcome()">Закрыть</div></div>`;
+    }
+    function greetingText() {
+      const hr = new Date().getHours();
+      const base = hr < 5 ? 'Доброй ночи' : hr < 12 ? 'Доброе утро' : hr < 18 ? 'Добрый день' : 'Добрый вечер';
+      let name = ''; try { name = (JSON.parse(localStorage.getItem('vitreum_profile')) || {}).name || ''; } catch (e) {}
+      return name ? base + ', ' + escHtml(name) : base;
+    }
+    async function showOfflineOverlay(wv, url) {
+      const pane = wv.closest('.tab-pane') || wv.parentElement;
+      if (!pane || pane.querySelector('.offline-frame')) return;
+      let html = ''; try { html = await window.vitreumAPI.getOfflineHtml(); } catch (err) {}
+      if (!html) return;
+      if (getComputedStyle(pane).position === 'static') pane.style.position = 'relative';
+      const fr = document.createElement('iframe');
+      fr.className = 'offline-frame'; fr.dataset.url = url || '';
+      fr.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; border:0; z-index:5; background:#0b0b10;';
+      fr.srcdoc = html;
+      pane.appendChild(fr);
+    }
+    window.addEventListener('message', (ev) => {
+      if (!ev.data || !ev.data.vitreumGo) return;
+      document.querySelectorAll('.offline-frame').forEach((fr) => {
+        const url = fr.dataset.url, wv = fr.parentElement && fr.parentElement.querySelector('webview');
+        fr.remove(); if (wv && url) wv.src = url;
+      });
+    });
+    function currentTabUrl(id) {
+      const ov = document.querySelector('#tab-pane-' + id + ' .offline-frame'); if (ov && ov.dataset.url) return ov.dataset.url;
+      const wv = document.getElementById('webview-' + id); if (!wv) return null;
+      try { return wv.getURL() || wv.src; } catch (e) { return wv.src; }
+    }
+    function saveSession() {
+      if (!authPassed || !tabs.length) return;
+      try {
+        const urls = tabs.map(t => currentTabUrl(t.id)).map(u => (u && u.includes('/offline.html')) ? new URLSearchParams(u.split('?')[1] || '').get('url') : u);
+        localStorage.setItem('vitreum_session', JSON.stringify({ urls, active: Math.max(0, tabs.findIndex(t => t.id === activeTabId)) }));
+      } catch (e) {}
+    }
+    function restoreSession() {
+      let s = null;
+      if (localStorage.getItem('vitreum_restore') !== 'false') { try { s = JSON.parse(localStorage.getItem('vitreum_session')); } catch (e) {} }
+      if (s && Array.isArray(s.urls) && s.urls.length) { s.urls.forEach(u => createTab(u || null)); const t = tabs[s.active]; if (t) switchTab(t.id); }
+      else createTab();
+    }
+    setInterval(saveSession, 3000);
+    window.addEventListener('beforeunload', saveSession);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      authPassed = true;
+      restoreSession();
+      initEasterEgg();
+      setInterval(updateClock, 10000); updateClock();
+      if (!localStorage.getItem('vitreum_incy_sub')) { window.vitreumAPI?.getDefaultSub().then((s) => { if (s) localStorage.setItem('vitreum_incy_sub', s); }); }
+      initProfile();
+      initSettingsUI();
+      initRegionUI();
+      localStorage.setItem('vitreum_vpn_active', 'false'); // при запуске VPN всегда выключен
+      window.vitreumAPI?.onVpnDropped?.(() => {
+        localStorage.setItem('vitreum_vpn_active', 'false');
+        const el = document.getElementById('vpn-status-text'); if (el) { el.innerText = '○ Отключено'; el.style.color = '#ef4444'; }
+        const t = document.getElementById('vpn-power-toggle'); if (t) t.checked = false;
+        showToast('VPN отключился: ядро остановилось', 'error');
+      });
+      loadWeatherSafe();
+      initResizer();
+      initContextMenuDrag();
+      
+      document.getElementById('default-search-selector').value = defaultSearchEngine;
+
+      const savedAccent = localStorage.getItem('vitreum_color_accent') || '#8b5cf6';
+      const savedClock = localStorage.getItem('vitreum_color_clock') || '#ffffff';
+      document.getElementById('picker-accent').value = savedAccent;
+      document.getElementById('picker-clock').value = savedClock;
+      applyCustomColors({ accent: savedAccent, clock: savedClock, date: '#aaaaaa', weather: savedAccent });
+
+      const savedTheme = localStorage.getItem('vitreum_theme') || 'dark';
+      changeTheme(savedTheme);
+      document.getElementById('theme-selector').value = savedTheme;
+      const savedBg = localStorage.getItem('vitreum_custom_bg');
+      if (savedBg) document.documentElement.style.setProperty('--custom-bg', `url('${savedBg}')`);
+
+      document.getElementById('tabs-wrapper').addEventListener('wheel', (e) => {
+        e.preventDefault(); document.getElementById('tabs-wrapper').scrollLeft += e.deltaY;
+      }, { passive: false });
+
+      window.vitreumAPI?.onDownloadStarted((data) => {
+        activeDownloadsCount++; updateDownloadBadge();
+        downloadsMap[data.id] = { id: data.id, fileName: data.fileName, percent: 0, status: 'Скачивание...', completed: false, savePath: data.savePath };
+        showToast(`📥 Загрузка: ${data.fileName}`);
+        const pop = document.getElementById('top-download-popup');
+        if (pop && getFlags().autoShowDownloads) pop.style.display = 'block';
+        renderTopDownloadsUI();
+      });
+      const fmtSize = (b) => b >= 1073741824 ? (b / 1073741824).toFixed(2) + ' ГБ' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : b >= 1024 ? Math.round(b / 1024) + ' КБ' : Math.round(b) + ' Б';
+      const fmtEta = (s) => s < 0 ? '' : s >= 3600 ? 'осталось ' + Math.floor(s / 3600) + ' ч ' + Math.round((s % 3600) / 60) + ' мин' : s >= 60 ? 'осталось ' + Math.floor(s / 60) + ' мин ' + (s % 60) + ' с' : 'осталось ' + s + ' с';
+      window.vitreumAPI?.onDownloadProgress((data) => {
+        if (downloadsMap[data.id]) {
+          downloadsMap[data.id].percent = data.percent;
+          downloadsMap[data.id].status = [`${data.percent}%`, data.totalBytes > 0 ? fmtSize(data.receivedBytes) + ' из ' + fmtSize(data.totalBytes) : fmtSize(data.receivedBytes), data.speed > 0 ? fmtSize(data.speed) + '/с' : '', fmtEta(data.eta)].filter(Boolean).join(' · ');
+          updateDownloadCard(data.id);
+        }
+      });
+      window.vitreumAPI?.onDownloadIcon((data) => { if (downloadsMap[data.id]) { downloadsMap[data.id].icon = data.icon; renderTopDownloadsUI(); } });
+      window.vitreumAPI?.onDownloadCompleted((data) => {
+        if (activeDownloadsCount > 0) activeDownloadsCount--; updateDownloadBadge();
+        if (downloadsMap[data.id]) {
+          downloadsMap[data.id].percent = 100; downloadsMap[data.id].status = 'Завершено';
+          downloadsMap[data.id].completed = true; downloadsMap[data.id].savePath = data.savePath;
+          updateDownloadCard(data.id);
+        }
+        showToast(`✅ Загрузка завершена: ${data.fileName}`, 'success');
+        renderTopDownloadsUI();
+      });
+      window.vitreumAPI?.onOpenInNewTab((url) => { if (authPassed) createTab(url); });
+      window.vitreumAPI?.onConfirmExit((n) => showExitConfirm(n));
+      window.vitreumAPI?.onShortcut((name) => {
+        if (!authPassed) return;
+        const idx = tabs.findIndex(t => t.id === activeTabId);
+        switch (name) {
+          case 'new-tab': createTab(); break;
+          case 'close-tab': if (activeTabId) closeTab(activeTabId, { stopPropagation() {} }); break;
+          case 'reopen-tab': { const u = closedTabs.pop(); if (u) createTab(u); break; }
+          case 'focus-address': { const a = document.getElementById('address-bar'); a.focus(); a.select(); break; }
+          case 'find': openFind(); break;
+          case 'bookmark': toggleBookmark(); break;
+          case 'save-pdf': case 'screenshot': {
+            const wv = activeWebview(); if (!wv) break;
+            let wcId; try { wcId = wv.getWebContentsId(); } catch (err) { break; }
+            window.vitreumAPI.savePage(wcId, name === 'save-pdf' ? 'pdf' : 'png').then((r) => showToast(r && r.ok ? 'Сохранено в «Загрузки»: ' + r.file : 'Не удалось сохранить', r && r.ok ? 'success' : 'error'));
+            break;
+          }
+          case 'print': { const wv = activeWebview(); try { if (wv) wv.print(); } catch (err) {} break; }
+          case 'reload': { const wv = activeWebview(); if (wv) wv.reload(); break; }
+          case 'hard-reload': { const wv = activeWebview(); if (wv) wv.reloadIgnoringCache(); break; }
+          case 'next-tab': if (tabs.length) switchTab(tabs[(idx + 1) % tabs.length].id); break;
+          case 'prev-tab': if (tabs.length) switchTab(tabs[(idx - 1 + tabs.length) % tabs.length].id); break;
+          case 'zoom-in': applyZoom(1); break;
+          case 'zoom-out': applyZoom(-1); break;
+          case 'zoom-reset': applyZoom(0); break;
+        }
+      });
+
+      window.vitreumAPI?.onShowContextMenu((params) => {
+        if (!authPassed) return;
+        currentCtxParams = params;
+        showCustomContextMenu(params);
+      });
+      window.vitreumAPI?.onHideContextMenu(() => {
+        const menu = document.getElementById('custom-context-menu');
+        if (menu) menu.style.display = 'none';
+      });
+
+      window.addEventListener('mousedown', (event) => {
+        const menu = document.getElementById('custom-context-menu');
+        if (menu && menu.style.display === 'block' && !menu.contains(event.target)) menu.style.display = 'none';
+        const p = document.getElementById('settings-popup');
+        const b = document.getElementById('settings-btn');
+        if (p && p.style.display === 'block' && !p.contains(event.target) && event.target !== b) p.style.display = 'none';
+        const topDl = document.getElementById('top-download-popup');
+        if (topDl && topDl.style.display === 'block' && !topDl.contains(event.target)) topDl.style.display = 'none';
+      });
+    });
+
+    function showCustomContextMenu(params) {
+      const menu = document.getElementById('custom-context-menu');
+      if (!menu) return;
+      menu.querySelectorAll('.ctx-item, .ctx-divider').forEach(el => el.style.display = 'none');
+
+      if (params.isEditable) menu.querySelectorAll('.ctx-editable').forEach(el => el.style.display = '');
+      if (params.isEditable || params.selectionText.length > 0) menu.querySelectorAll('.ctx-any-edit').forEach(el => el.style.display = '');
+      const selText = (params.selectionText || '').trim();
+      if (selText.length > 0) {
+        menu.querySelectorAll('.ctx-search').forEach(el => el.style.display = '');
+        const short = selText.length > 16 ? selText.slice(0, 16) + '…' : selText;
+        document.getElementById('ctx-search-item').textContent = 'Найти «' + short + '»';
+      }
+      if (params.isEditable || params.selectionText.length > 0 || !params.isMainWindow) menu.querySelectorAll('.ctx-selectall').forEach(el => el.style.display = '');
+      if (params.linkURL) menu.querySelectorAll('.ctx-link').forEach(el => el.style.display = '');
+      if (params.srcURL) menu.querySelectorAll('.ctx-img').forEach(el => el.style.display = '');
+      if (!params.isMainWindow) menu.querySelectorAll('.ctx-page').forEach(el => el.style.display = '');
+
+      cleanupDividers(menu);
+
+      let x = params.x, y = params.y;
+      if (!params.isMainWindow) {
+        const wv = findWebviewByContentsId(params.webContentsId) || document.querySelector('.tab-pane.active webview');
+        if (wv) { const rect = wv.getBoundingClientRect(); x += rect.left; y += rect.top; }
+      }
+      menu.style.display = 'block'; menu.style.left = '0px'; menu.style.top = '0px';
+      const mw = menu.offsetWidth, mh = menu.offsetHeight;
+      if (x + mw > window.innerWidth - 8) x = window.innerWidth - mw - 8;
+      if (y + mh > window.innerHeight - 8) y = window.innerHeight - mh - 8;
+      menu.style.left = Math.max(4, x) + 'px'; menu.style.top = Math.max(4, y) + 'px';
+    }
+    function findWebviewByContentsId(id) {
+      for (const wv of document.querySelectorAll('webview')) {
+        try { if (wv.getWebContentsId() === id) return wv; } catch (e) {}
+      }
+      return null;
+    }
+    function cleanupDividers(menu) {
+      const children = Array.from(menu.children); let lastVisible = null; const toHide = [];
+      for (const el of children) {
+        if (el.classList.contains('ctx-drag-handle')) continue;
+        if (el.style.display === 'none') continue;
+        if (el.classList.contains('ctx-divider') && (!lastVisible || lastVisible.classList.contains('ctx-divider'))) { toHide.push(el); continue; }
+        lastVisible = el;
+      }
+      if (lastVisible && lastVisible.classList.contains('ctx-divider')) toHide.push(lastVisible);
+      toHide.forEach(el => el.style.display = 'none');
+    }
+    function initContextMenuDrag() {
+      const menu = document.getElementById('custom-context-menu'), handle = document.getElementById('ctx-drag-handle');
+      if (!menu || !handle) return;
+      handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isMenuDragging = true; const rect = menu.getBoundingClientRect();
+        menuDragOffsetX = e.clientX - rect.left; menuDragOffsetY = e.clientY - rect.top;
+        e.preventDefault(); e.stopPropagation();
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isMenuDragging) return;
+        let newX = e.clientX - menuDragOffsetX, newY = e.clientY - menuDragOffsetY;
+        const mw = menu.offsetWidth, mh = menu.offsetHeight;
+        if (newX < 0) newX = 0; if (newY < 0) newY = 0;
+        if (newX + mw > window.innerWidth) newX = window.innerWidth - mw;
+        if (newY + mh > window.innerHeight) newY = window.innerHeight - mh;
+        menu.style.left = newX + 'px'; menu.style.top = newY + 'px';
+      });
+      window.addEventListener('mouseup', () => { isMenuDragging = false; });
+      menu.addEventListener('mousedown', (e) => {
+        if (!e.target.closest('#ctx-drag-handle')) e.preventDefault();
+      });
+      menu.addEventListener('click', (e) => {
+        const item = e.target.closest('.ctx-item');
+        if (!item) return;
+        e.stopPropagation(); ctxAction(item.dataset.action);
+      });
+    }
+    function ctxAction(action) {
+      const menu = document.getElementById('custom-context-menu');
+      if (menu) menu.style.display = 'none';
+      const params = currentCtxParams; if (!params) return;
+      const wcId = params.webContentsId;
+      switch (action) {
+        case 'undo': case 'redo': case 'cut': case 'copy': case 'paste': case 'selectAll':
+          window.vitreumAPI?.performEditAction(action, wcId, params.selectionText || ''); break;
+        case 'searchSelection': {
+          const q = (params.selectionText || '').trim();
+          if (!q) break;
+          const engines = { yandex: 'https://yandex.ru/search/?text=', google: 'https://www.google.com/search?q=', bing: 'https://www.bing.com/search?q=', duckduckgo: 'https://duckduckgo.com/?q=' };
+          createTab((engines[defaultSearchEngine] || engines.bing) + encodeURIComponent(q));
+          break;
+        }
+        case 'copyLink':
+          if (params.linkURL) { window.vitreumAPI?.copyLinkAddress(params.linkURL); showToast('🔗 Адрес ссылки скопирован', 'success'); } break;
+        case 'openLinkNewTab':
+          if (params.linkURL) createTab(params.linkURL); break;
+        case 'downloadImg':
+          if (params.srcURL) { window.vitreumAPI?.downloadUrl(params.srcURL, wcId); showToast('📥 Загрузка начата', 'success'); } break;
+        case 'copyImage':
+          if (params.srcURL) { window.vitreumAPI?.copyImage(wcId, params.x, params.y); showToast('Изображение скопировано', 'success'); } break;
+        case 'openImgNewTab':
+          if (params.srcURL) createTab(params.srcURL); break;
+        case 'reload':
+          if (params.isMainWindow) location.reload();
+          else { const wv = findWebviewByContentsId(wcId) || document.querySelector('.tab-pane.active webview'); if (wv) wv.reload(); } break;
+        case 'inspect':
+          window.vitreumAPI?.inspectElement(wcId, params.x, params.y); break;
+      }
+    }
+
+    function toggleTopDownloadPopup(e) {
+      if (e) e.stopPropagation();
+      const pop = document.getElementById('top-download-popup');
+      if (pop) { pop.style.display = pop.style.display === 'block' ? 'none' : 'block'; if (pop.style.display === 'block') renderTopDownloadsUI(); }
+    }
+    function renderTopDownloadsUI() {
+      const body = document.getElementById('top-download-body');
+      if (!body) return;
+      const keys = Object.keys(downloadsMap);
+      if (keys.length === 0) { body.innerHTML = '<div style="color:#aaa; font-size:11px; text-align:center; padding:10px;">Нет активных загрузок.</div>'; return; }
+      body.innerHTML = keys.map(k => {
+        const item = downloadsMap[k], safePath = item.savePath ? item.savePath.replace(/\\/g, '\\\\') : '';
+        return `<div class="download-card" id="dl-card-${k}"><div class="dl-top-row">${item.icon ? `<img src="${item.icon}" style="width:32px; height:32px; margin-right:10px; border-radius:6px; flex-shrink:0;">` : ''}<div class="dl-info"><div class="dl-filename">${escHtml(item.fileName)}</div><div class="dl-status-text">${item.status}</div></div></div><div class="dl-progress-bg"><div class="dl-progress-fill ${item.completed ? 'completed' : ''}" style="width:${item.percent}%"></div></div>${item.completed ? `<div style="display:flex; gap:6px;"><button class="dl-btn-action" onclick="window.vitreumAPI?.openFile('${safePath}')">Открыть</button><button class="dl-btn-action" onclick="window.vitreumAPI?.openFolder('${safePath}')">Показать в папке</button></div>` : ''}</div>`;
+      }).join('') + '<button class="dl-btn-action" style="width:100%; margin-top:8px;" onclick="clearDownloads()">Очистить все</button>';
+    }
+    function clearDownloads() { Object.keys(downloadsMap).forEach(k => { if (downloadsMap[k].completed || downloadsMap[k].percent >= 100) delete downloadsMap[k]; }); renderTopDownloadsUI(); }
+    function updateDownloadBadge() {
+      const badge = document.getElementById('download-count-badge');
+      if (badge) { if (activeDownloadsCount > 0) { badge.innerText = activeDownloadsCount; badge.style.display = 'inline-block'; } else { badge.style.display = 'none'; } }
+    }
+    function updateDownloadCard(id) {
+      const card = document.getElementById('dl-card-' + id);
+      if (card && downloadsMap[id]) {
+        const item = downloadsMap[id];
+        const statusEl = card.querySelector('.dl-status-text'), fillEl = card.querySelector('.dl-progress-fill');
+        if (statusEl) statusEl.innerText = item.status;
+        if (fillEl) { fillEl.style.width = item.percent + '%'; if (item.completed) fillEl.classList.add('completed'); }
+      } else { renderTopDownloadsUI(); }
+    }
+
+    function changeTheme(theme) {
+      if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('vitreum_theme', theme);
+    }
+    function changeDefaultSearchEngine(engine) {
+      defaultSearchEngine = engine; localStorage.setItem('vitreum_default_search', engine);
+      showToast('🔍 Поисковик изменен', 'success');
+    }
+    function updateCustomColor(type, val) {
+      let colors = { accent: document.getElementById('picker-accent').value, clock: document.getElementById('picker-clock').value };
+      colors[type] = val; localStorage.setItem('vitreum_color_' + type, val);
+      applyCustomColors({ accent: colors.accent, clock: colors.clock, date: '#aaaaaa', weather: colors.accent });
+    }
+    function applyCustomColors(c) {
+      document.documentElement.style.setProperty('--accent-color', c.accent);
+      document.documentElement.style.setProperty('--accent-glow', c.accent + '80');
+      document.documentElement.style.setProperty('--clock-color', c.clock);
+      document.documentElement.style.setProperty('--date-color', c.date);
+      document.documentElement.style.setProperty('--weather-color', c.weather);
+    }
+    function uploadBg(e) {
+      const file = e.target.files[0];
+      if (file) { const reader = new FileReader(); reader.onload = (evt) => { document.documentElement.style.setProperty('--custom-bg', `url('${evt.target.result}')`); localStorage.setItem('vitreum_custom_bg', evt.target.result); showToast('🖼️ Фон установлен', 'success'); }; reader.readAsDataURL(file); }
+    }
+    function removeBg() { document.documentElement.style.setProperty('--custom-bg', 'none'); localStorage.removeItem('vitreum_custom_bg'); showToast('Фон удален'); }
+    function toggleAdBlock(checkbox) { window.vitreumAPI?.toggleAdBlock(checkbox.checked); showToast(checkbox.checked ? '🛡️ AdBlock включен' : '⚠️ AdBlock отключен'); }
+    async function clearSystemCache() {
+      if (window.vitreumAPI?.clearCache) {
+        await window.vitreumAPI.clearCache(); localStorage.clear();
+        showToast('🗑️ Кэш очищен!', 'success'); setTimeout(() => location.reload(), 1500);
+      }
+    }
+    function updateClock() {
+      const now = new Date(), timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      document.querySelectorAll('.live-clock').forEach(el => el.innerText = timeStr);
+      document.querySelectorAll('.live-date').forEach(el => el.innerText = now.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }));
+    }
+    const REGIONS = [["Россия, Москва", "Москва", 55.7558, 37.6173, "ru-RU"], ["Россия, Санкт-Петербург", "Санкт-Петербург", 59.9311, 30.3609, "ru-RU"], ["Беларусь, Минск", "Минск", 53.9006, 27.559, "ru-BY"], ["Казахстан, Астана", "Астана", 51.1694, 71.4491, "ru-KZ"], ["Украина, Киев", "Киев", 50.4501, 30.5234, "uk-UA"], ["Грузия, Тбилиси", "Тбилиси", 41.7151, 44.8271, "en-GB"], ["Армения, Ереван", "Ереван", 40.1792, 44.4991, "en-GB"], ["Азербайджан, Баку", "Баку", 40.4093, 49.8671, "en-GB"], ["Узбекистан, Ташкент", "Ташкент", 41.2995, 69.2401, "ru-RU"], ["Кыргызстан, Бишкек", "Бишкек", 42.8746, 74.5698, "ru-RU"], ["Латвия, Рига", "Рига", 56.9496, 24.1052, "en-GB"], ["Литва, Вильнюс", "Вильнюс", 54.6872, 25.2797, "en-GB"], ["Эстония, Таллин", "Таллин", 59.437, 24.7536, "en-GB"], ["Польша, Варшава", "Варшава", 52.2297, 21.0122, "en-GB"], ["Германия, Берлин", "Берлин", 52.52, 13.405, "de-DE"], ["Франция, Париж", "Париж", 48.8566, 2.3522, "fr-FR"], ["Великобритания, Лондон", "Лондон", 51.5074, -0.1278, "en-GB"], ["Испания, Мадрид", "Мадрид", 40.4168, -3.7038, "es-ES"], ["Италия, Рим", "Рим", 41.9028, 12.4964, "it-IT"], ["Нидерланды, Амстердам", "Амстердам", 52.3676, 4.9041, "en-GB"], ["Швеция, Стокгольм", "Стокгольм", 59.3293, 18.0686, "en-GB"], ["Финляндия, Хельсинки", "Хельсинки", 60.1699, 24.9384, "en-GB"], ["Чехия, Прага", "Прага", 50.0755, 14.4378, "en-GB"], ["Турция, Анкара", "Анкара", 39.9334, 32.8597, "tr-TR"], ["Израиль, Иерусалим", "Иерусалим", 31.7683, 35.2137, "en-US"], ["ОАЭ, Абу-Даби", "Абу-Даби", 24.4539, 54.3773, "en-US"], ["Саудовская Аравия, Эр-Рияд", "Эр-Рияд", 24.7136, 46.6753, "en-US"], ["Египет, Каир", "Каир", 30.0444, 31.2357, "en-US"], ["Индия, Нью-Дели", "Нью-Дели", 28.6139, 77.209, "en-IN"], ["Китай, Пекин", "Пекин", 39.9042, 116.4074, "zh-CN"], ["Япония, Токио", "Токио", 35.6762, 139.6503, "ja-JP"], ["Южная Корея, Сеул", "Сеул", 37.5665, 126.978, "ko-KR"], ["Вьетнам, Ханой", "Ханой", 21.0278, 105.8342, "en-US"], ["Таиланд, Бангкок", "Бангкок", 13.7563, 100.5018, "en-US"], ["Индонезия, Джакарта", "Джакарта", -6.2088, 106.8456, "en-US"], ["Сингапур", "Сингапур", 1.3521, 103.8198, "en-US"], ["Австралия, Канберра", "Канберра", -35.2809, 149.13, "en-AU"], ["Новая Зеландия, Веллингтон", "Веллингтон", -41.2866, 174.7756, "en-NZ"], ["США, Вашингтон", "Вашингтон", 38.9072, -77.0369, "en-US"], ["США, Нью-Йорк", "Нью-Йорк", 40.7128, -74.006, "en-US"], ["Канада, Оттава", "Оттава", 45.4215, -75.6972, "en-CA"], ["Мексика, Мехико", "Мехико", 19.4326, -99.1332, "es-MX"], ["Бразилия, Бразилиа", "Бразилиа", -15.7939, -47.8828, "pt-BR"], ["Аргентина, Буэнос-Айрес", "Буэнос-Айрес", -34.6037, -58.3816, "es-AR"], ["ЮАР, Претория", "Претория", -25.7479, 28.2293, "en-ZA"], ["Нигерия, Абуджа", "Абуджа", 9.0765, 7.3986, "en-US"]];
+    const CC_LANG = { RU: 'ru-RU', BY: 'ru-BY', KZ: 'ru-KZ', UA: 'uk-UA', DE: 'de-DE', FR: 'fr-FR', ES: 'es-ES', IT: 'it-IT', IN: 'en-IN', GB: 'en-GB', US: 'en-US', CN: 'zh-CN', JP: 'ja-JP', KR: 'ko-KR', TR: 'tr-TR', BR: 'pt-BR' };
+    function getRegion() {
+      try { const r = JSON.parse(localStorage.getItem('vitreum_region')); if (r && r.name) return r; } catch (e) {}
+      const d = REGIONS[0]; return { label: d[0], name: d[1], lat: d[2], lon: d[3], lang: d[4] };
+    }
+    const COUNTRY_CODES = "AF AL DZ AD AO AG AR AM AU AT AZ BS BH BD BB BY BE BZ BJ BT BO BA BW BR BN BG BF BI KH CM CA CV CF TD CL CN CO KM CG CD CR CI HR CU CY CZ DK DJ DM DO EC EG SV GQ ER EE SZ ET FJ FI FR GA GM GE DE GH GR GD GT GN GW GY HT HN HU IS IN ID IR IQ IE IL IT JM JP JO KZ KE KI KP KR XK KW KG LA LV LB LS LR LY LI LT LU MG MW MY MV ML MT MH MR MU MX FM MD MC MN ME MA MZ MM NA NR NP NL NZ NI NE NG MK NO OM PK PW PS PA PG PY PE PH PL PT QA RO RU RW KN LC VC WS SM ST SA SN RS SC SL SG SK SI SB SO ZA SS ES LK SD SR SE CH SY TW TJ TZ TH TL TG TO TT TN TR TM TV UG UA AE GB US UY UZ VU VA VE VN YE ZM ZW".split(' ');
+    function countryName(cc) { try { return new Intl.DisplayNames(['ru'], { type: 'region' }).of(cc); } catch (e) { return cc; } }
+    function langForCountry(cc) { if (CC_LANG[cc]) return CC_LANG[cc]; try { return new Intl.Locale('und-' + cc).maximize().language + '-' + cc; } catch (e) { return 'en-US'; } }
+    function initRegionUI() {
+      const sel = document.getElementById('region-country'); if (!sel) return;
+      const cur = getRegion();
+      sel.innerHTML = COUNTRY_CODES.map(cc => [cc, countryName(cc)]).sort((a, b) => a[1].localeCompare(b[1], 'ru')).map(([cc, n]) => `<option value="${cc}">${n}</option>`).join('');
+      sel.value = cur.cc || 'RU';
+      document.getElementById('region-current').textContent = 'Сейчас: ' + (cur.label || cur.name);
+      window.vitreumAPI?.setRegion({ lang: cur.lang });
+    }
+    function applyRegion(r) {
+      localStorage.setItem('vitreum_region', JSON.stringify(r));
+      window.vitreumAPI?.setRegion({ lang: r.lang });
+      document.getElementById('region-current').textContent = 'Сейчас: ' + (r.label || r.name);
+      loadWeatherSafe();
+      showToast('Регион: ' + (r.label || r.name) + '. Откройте сайты заново, чтобы язык применился', 'success');
+    }
+    async function onCountryChange() {
+      const cc = document.getElementById('region-country').value, name = countryName(cc);
+      let lat = null, lon = null, capital = '';
+      try {
+        const r = await fetch('https://restcountries.com/v3.1/alpha/' + cc + '?fields=capital,capitalInfo'); const j = await r.json(); const d = Array.isArray(j) ? j[0] : j;
+        if (d && d.capitalInfo && d.capitalInfo.latlng) { lat = d.capitalInfo.latlng[0]; lon = d.capitalInfo.latlng[1]; capital = (d.capital && d.capital[0]) || ''; }
+      } catch (e) {}
+      if (lat === null) {
+        try { const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=ru&format=json&countryCode=' + cc + '&name=' + encodeURIComponent(name)); const j = await r.json(); const g = (j.results || [])[0]; if (g) { lat = g.latitude; lon = g.longitude; capital = g.name; } } catch (e) {}
+      }
+      const cur = getRegion();
+      applyRegion({ label: name, name: capital || name, lat: lat !== null ? lat : cur.lat, lon: lon !== null ? lon : cur.lon, lang: langForCountry(cc), cc });
+    }
+    function wxText(c) {
+      if (c === 0) return 'ясно ☀️'; if (c <= 2) return 'переменная облачность ⛅'; if (c === 3) return 'пасмурно ☁️';
+      if (c <= 48) return 'туман 🌫️'; if (c <= 57) return 'морось 🌦️'; if (c <= 67) return 'дождь 🌧️';
+      if (c <= 77) return 'снег ❄️'; if (c <= 82) return 'ливень 🌧️'; if (c <= 86) return 'снегопад ❄️'; return 'гроза ⛈️';
+    }
+    async function loadWeatherSafe() {
+      const r = getRegion();
+      const set = (html) => { window.lastWeatherHtml = html; document.querySelectorAll('.weather-widget').forEach(el => el.innerHTML = html); };
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${r.lat}&longitude=${r.lon}&current=temperature_2m,weather_code&timezone=auto`);
+        const d = await res.json(); const t = Math.round(d.current.temperature_2m);
+        set(`Погода: <b>${t > 0 ? '+' : ''}${t}°C</b>, ${wxText(d.current.weather_code)} · ${r.name}`);
+      } catch (e) { set(`Погода недоступна (нет сети) · ${r.name}`); }
+    }
+    function initResizer() {
+      const drawer = document.getElementById('side-drawer'), resizer = document.getElementById('drawer-resizer');
+      let isResizing = false, shield = null;
+      const stop = () => { if (!isResizing) return; isResizing = false; if (shield) { shield.remove(); shield = null; } document.body.style.cursor = ''; };
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault(); isResizing = true;
+        shield = document.createElement('div'); shield.style.cssText = 'position:fixed; inset:0; z-index:2147483000; cursor:col-resize;';
+        document.body.appendChild(shield); document.body.style.cursor = 'col-resize';
+      });
+      window.addEventListener('mousemove', (e) => { if (!isResizing) return; if (e.buttons === 0) { stop(); return; } const w = e.clientX - 56; if (w >= 300 && w <= 900) drawer.style.width = w + 'px'; });
+      window.addEventListener('mouseup', stop); window.addEventListener('blur', stop);
+    }
+    function syncSearchEngine(val) { defaultSearchEngine = val; }
+    function openTileModal() { document.getElementById('tile-modal').style.display = 'flex'; }
+    function closeTileModal() { document.getElementById('tile-modal').style.display = 'none'; }
+    function saveNewTile() {
+      const name = document.getElementById('modal-site-name').value.trim(), url = document.getElementById('modal-site-url').value.trim();
+      if (!name || !url) return;
+      customTiles.push({ name, url }); localStorage.setItem('vitreum_custom_tiles', JSON.stringify(customTiles));
+      document.querySelectorAll('.tiles-grid').forEach(grid => { grid.innerHTML = generateTilesHtml(); });
+      closeTileModal(); showToast('⭐ Сайт добавлен', 'success');
+    }
+    function deleteCustomTile(index, event) {
+      event.stopPropagation(); customTiles.splice(index, 1);
+      localStorage.setItem('vitreum_custom_tiles', JSON.stringify(customTiles));
+      document.querySelectorAll('.tiles-grid').forEach(grid => { grid.innerHTML = generateTilesHtml(); });
+      showToast('🗑️ Плитка удалена');
+    }
+    function faviconCached(domain) { try { return localStorage.getItem('vitreum_fav_' + domain); } catch (e) { return null; } }
+    function tileImg(domain) {
+      const src = faviconCached(domain) || 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=64';
+      return `<img class="tile-img" data-domain="${domain}" src="${src}" onload="cacheFavicon(this)" onerror="tileImgFallback(this)">`;
+    }
+    function tileImgFallback(img) { const d = String(img.dataset.domain || '?').replace(/^www\./, ''); const s = document.createElement('span'); s.className = 'tile-letter'; s.textContent = d.charAt(0).toUpperCase(); img.replaceWith(s); }
+    async function cacheFavicon(img) {
+      const domain = img.dataset.domain; if (!domain || faviconCached(domain) || !String(img.src).startsWith('http')) return;
+      try { const r = await fetch(img.src); const b = await r.blob(); const fr = new FileReader(); fr.onload = () => { try { localStorage.setItem('vitreum_fav_' + domain, fr.result); } catch (e) {} }; fr.readAsDataURL(b); } catch (e) {}
+    }
+    function warmFavicons() { if (!navigator.onLine) return; ['youtube.com', 'github.com', 'reddit.com', 'deepseek.com', 'claude.ai'].forEach(d => { if (!faviconCached(d)) cacheFavicon({ dataset: { domain: d }, src: 'https://www.google.com/s2/favicons?domain=' + d + '&sz=64' }); }); }
+    function generateTilesHtml() {
+      const getTileIcon = (domain, svgKey) => useMonochromeIcons ? svgIcons[svgKey] : `${tileImg(domain)}`;
+      let defaultTiles = `
+        <div class="tile-card" onclick="createTab('https://youtube.com')">${getTileIcon('youtube.com', 'youtube')} YouTube</div>
+        <div class="tile-card" onclick="createTab('https://github.com')">${getTileIcon('github.com', 'github')} GitHub</div>
+        <div class="tile-card" onclick="createTab('https://reddit.com')">${getTileIcon('reddit.com', 'reddit')} Reddit</div>
+        <div class="tile-card" onclick="createTab('https://chat.deepseek.com')">${getTileIcon('deepseek.com', 'deepseek')} DeepSeek</div>
+        <div class="tile-card" onclick="createTab('https://claude.ai')">${getTileIcon('claude.ai', 'default')} Claude</div>
+      `;
+      customTiles.forEach((t, index) => {
+        const iconHtml = useMonochromeIcons ? svgIcons.default : `${tileImg(t.url)}`;
+        defaultTiles += `<div class="tile-card" onclick="createTab('${t.url}')">${iconHtml} ${t.name}<span class="tile-delete-btn" onclick="deleteCustomTile(${index}, event)">✕</span></div>`;
+      });
+      defaultTiles += `<div class="tile-card" onclick="openTileModal()" style="border: 2px dashed var(--accent-color); justify-content:center;">➕ Добавить</div>`;
+      return defaultTiles;
+    }
+    function createTab(url = null) {
+      if (!authPassed) return;
+      if (!url && localStorage.getItem('vitreum_welcomed') === 'true') { const hp = getFlags().homepage; if (hp) url = hp; }
+      const id = 'tab-' + Date.now() + '-' + Math.floor(Math.random() * 1e6), tabEl = document.createElement('div');
+      tabEl.className = 'tab'; tabEl.id = 'tab-header-' + id;
+      tabEl.innerHTML = `<span id="tab-title-${id}">Главная</span><span class="tab-close" onclick="closeTab('${id}', event)">✕</span>`;
+      tabEl.onclick = () => switchTab(id);
+      document.getElementById('tabs-wrapper').appendChild(tabEl);
+      const paneEl = document.createElement('div');
+      paneEl.className = 'tab-pane'; paneEl.id = 'tab-pane-' + id;
+      paneEl.innerHTML = `<div class="start-screen"><div class="live-clock">00:00</div><div class="live-date">...</div><div class="weather-widget">Загрузка погоды...</div><div class="greeting">${greetingText()}</div><div class="shimmer-logo">Vitreum Ultimate</div>${welcomeHtml()}<input type="text" class="hero-search-box" placeholder="Поиск или URL..." onkeydown="if(event.key==='Enter') loadUrlInTabFromHome('${id}', this.value)"><div class="tiles-grid">${generateTilesHtml()}</div></div>`;
+      document.getElementById('content-area').appendChild(paneEl);
+      if (window.lastWeatherHtml) paneEl.querySelectorAll('.weather-widget').forEach(el => el.innerHTML = window.lastWeatherHtml);
+      tabs.push({ id }); switchTab(id);
+      document.getElementById('tabs-wrapper').scrollLeft = document.getElementById('tabs-wrapper').scrollWidth;
+      if (url) loadUrlInTab(id, url);
+    }
+    function switchTab(id) {
+      activeTabId = id;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-header-' + id)?.classList.add('active');
+      document.getElementById('tab-pane-' + id)?.classList.add('active');
+      const wv = document.getElementById('webview-' + id);
+      if (wv) document.getElementById('address-bar').value = wv.src;
+      else document.getElementById('address-bar').value = '';
+    }
+    function closeTab(id, e) {
+      e.stopPropagation();
+      try {
+        const u = currentTabUrl(id);
+        if (u && !u.startsWith('data:')) { closedTabs.push(u.includes('/offline.html') ? (new URLSearchParams(u.split('?')[1] || '').get('url') || u) : u); if (closedTabs.length > 20) closedTabs.shift(); }
+      } catch (err) {}
+      document.getElementById('tab-header-' + id)?.remove(); document.getElementById('tab-pane-' + id)?.remove();
+      tabs = tabs.filter(t => t.id !== id);
+      if (tabs.length > 0) switchTab(tabs[tabs.length - 1].id); else window.close();
+    }
+    function loadUrlInTabFromHome(id, targetUrl) {
+      if (!targetUrl || !targetUrl.trim()) return;
+      const engine = defaultSearchEngine || 'bing';
+      const searchEngines = { yandex: 'https://yandex.ru/search/?text=', google: 'https://www.google.com/search?q=', bing: 'https://www.bing.com/search?q=', duckduckgo: 'https://duckduckgo.com/?q=' };
+      let searchBase = searchEngines[engine] || searchEngines.bing;
+      let formatted = targetUrl.trim();
+      if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+        if (formatted.includes('.') && !formatted.includes(' ')) formatted = 'https://' + formatted;
+        else formatted = searchBase + encodeURIComponent(formatted);
+      }
+      const pane = document.getElementById('tab-pane-' + id);
+      if (pane) {
+        pane.innerHTML = `<webview src="${formatted}" id="webview-${id}" partition="persist:vitreum" allowpopups plugins webpreferences="contextIsolation=no" style="width:100%; height:100%; border:none;"></webview>`;
+        const webviewEl = document.getElementById('webview-' + id);
+        webviewEl.addEventListener('page-title-updated', (e) => {
+          const tEl = document.getElementById('tab-title-' + id);
+          if (tEl) tEl.innerText = e.title.length > 15 ? e.title.substring(0, 15) + '...' : e.title;
+        });
+        webviewEl.addEventListener('dom-ready', () => { try { const z = getFlags().zoom; webviewEl._zoom = z; if (z) webviewEl.setZoomLevel(z); } catch (err) {} });
+        webviewEl.addEventListener('found-in-page', (e) => { const r = e.result; document.getElementById('find-count').textContent = r.matches ? r.activeMatchOrdinal + ' из ' + r.matches : '0'; });
+        webviewEl.addEventListener('did-fail-load', (e) => {
+          if (!e.isMainFrame || e.errorCode === -3) return;
+          const offlineCodes = [-106, -21];
+          const maybeOffline = [-105, -109, -118, -7, -101, -102];
+          if (offlineCodes.includes(e.errorCode) || (maybeOffline.includes(e.errorCode) && !navigator.onLine)) showOfflineOverlay(webviewEl, e.validatedURL);
+        });
+        webviewEl.addEventListener('did-start-navigation', (e) => {
+          if (e.isMainFrame && !String(e.url).startsWith('chrome-error:')) { const pane = webviewEl.closest('.tab-pane') || webviewEl.parentElement; pane && pane.querySelectorAll('.offline-frame').forEach(f => f.remove()); }
+        });
+        webviewEl.addEventListener('did-navigate', (e) => {
+          if (e.url.includes('/offline.html') || String(e.url).startsWith('chrome-error:')) return;
+          document.getElementById('address-bar').value = e.url;
+          historyList.unshift({ url: e.url, time: new Date().toLocaleTimeString() });
+          localStorage.setItem('vitreum_history', JSON.stringify(historyList));
+        });
+        webviewEl.addEventListener('render-process-gone', (e) => {
+          if (e.reason === 'crashed' || e.reason === 'oom') { showToast('⚠️ Сбой памяти', 'error'); webviewEl.reload(); }
+        });
+      }
+      document.getElementById('address-bar').value = formatted;
+    }
+    function loadUrlInTab(id, targetUrl) { loadUrlInTabFromHome(id, targetUrl); }
+    function handleAddressInput(e) { if (e.key === 'Enter' && activeTabId) loadUrlInTab(activeTabId, e.target.value); }
+    function toggleBookmark() {
+      const wv = document.getElementById('webview-' + activeTabId);
+      if (!wv) { showToast('⚠️ Нечего добавлять', 'error'); return; }
+      const url = wv.src;
+      if (!bookmarksList.includes(url)) { bookmarksList.push(url); localStorage.setItem('vitreum_bookmarks', JSON.stringify(bookmarksList)); showToast('⭐ В закладках', 'success'); }
+      else showToast('ℹ️ Уже в закладках');
+    }
+    function openDevTools() { const wv = document.getElementById('webview-' + activeTabId); if (wv) wv.openDevTools(); }
+    function deleteHistoryItem(index) { historyList.splice(index, 1); localStorage.setItem('vitreum_history', JSON.stringify(historyList)); openDrawer('history'); }
+    function clearAllHistory() { historyList = []; localStorage.removeItem('vitreum_history'); openDrawer('history'); showToast('🗑️ История очищена', 'success'); }
+    function deleteBookmarkItem(index) { bookmarksList.splice(index, 1); localStorage.setItem('vitreum_bookmarks', JSON.stringify(bookmarksList)); openDrawer('bookmarks'); }
+    function saveNotes() { const notesText = document.getElementById('user-notes-textarea').value; localStorage.setItem('vitreum_notes', notesText); showToast('💾 Заметка сохранена', 'success'); }
+    function changeSidebarAiEngine(engineUrl) { document.getElementById('drawer-body').innerHTML = `<webview src="${engineUrl}" partition="persist:ai-session" allowpopups style="width:100%; height:100%; border-radius:8px; border:none;"></webview>`; }
+
+    async function saveAndFetchVpn() {
+      const subVal = document.getElementById('vpn-sub-input').value.trim();
+      if (!subVal) { showToast('⚠️ Введите ключ подписки!', 'error'); return; }
+      
+      document.getElementById('vpn-servers-list').innerHTML = '<div style="color: #aaa; font-size: 11px; text-align: center;">Загрузка серверов...</div>';
+      localStorage.setItem('vitreum_incy_sub', subVal);
+      
+      const res = await window.vitreumAPI.parseVpnSub(subVal);
+      if (res.success && res.servers.length > 0) {
+        vpnServersList = res.servers;
+        renderVpnServers();
+        showToast(`✅ Загружено ${res.servers.length} серверов!`, 'success');
+      } else {
+        document.getElementById('vpn-servers-list').innerHTML = `<div style="color: #ef4444; font-size: 11px;">Ошибка парсинга. Проверьте ключ.</div>`;
+        showToast('❌ Неверный формат подписки', 'error');
+      }
+    }
+
+    function renderVpnServers() {
+      const listContainer = document.getElementById('vpn-servers-list');
+      if (!listContainer) return;
+      
+      listContainer.innerHTML = vpnServersList.map((s, i) => `
+        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; cursor: pointer;" onclick="connectVpnByIndex(${i})">
+          <div>
+            <div style="font-weight: 600; color: var(--text-color);">${escHtml(s.name)}</div>
+            <div style="font-size: 9px; color: var(--accent-color);">Тип: ${escHtml(s.type)} | Пинг: ${escHtml(s.ping)}</div>
+          </div>
+          <span style="color: #10b981; font-size: 10px; background: rgba(16,185,129,0.1); padding: 2px 6px; border-radius: 4px;">Подключиться</span>
+        </div>
+      `).join('');
+    }
+
+    const AVATAR_COLORS = ['#4285f4', '#ea4335', '#fbbc05', '#34a853', '#a142f4', '#ff6d01', '#46bdc6', '#7b8794'];
+    function getProfile() { try { const p = JSON.parse(localStorage.getItem('vitreum_profile')); if (p) return p; } catch (e) {} return { name: '', color: AVATAR_COLORS[0] }; }
+    function renderProfile(p, signed) {
+      const letter = (p.name || 'V').trim().charAt(0).toUpperCase() || 'V';
+      ['profile-avatar', 'profile-avatar-big'].forEach(id => { const el = document.getElementById(id); el.textContent = letter; el.style.background = p.color || AVATAR_COLORS[0]; });
+      document.getElementById('profile-btn').style.boxShadow = signed ? '0 0 0 2px #34a853' : 'none';
+      const st = document.getElementById('google-status'); if (st) st.textContent = signed ? 'Google: вход выполнен' : 'Google: вход не выполнен';
+      const gb = document.getElementById('google-signin-btn'); if (gb) gb.style.display = signed ? 'none' : '';
+    }
+    async function refreshGoogleState() { let signed = false; try { signed = await window.vitreumAPI.googleSignedIn(); } catch (e) {} renderProfile(getProfile(), signed); }
+    function initProfile() {
+      const p = getProfile();
+      document.getElementById('profile-name').value = p.name || '';
+      document.getElementById('profile-avatars').innerHTML = AVATAR_COLORS.map(c => `<span style="width:24px; height:24px; border-radius:50%; background:${c}; cursor:pointer; display:inline-block;" onclick="pickAvatar('${c}')"></span>`).join('');
+      const rt = document.getElementById('restore-toggle'); if (rt) rt.checked = localStorage.getItem('vitreum_restore') !== 'false';
+      window.vitreumAPI?.getGfxCompat().then((v) => { const g = document.getElementById('gfx-toggle'); if (g) g.checked = !!v; });
+      refreshGoogleState();
+      document.getElementById('tabs-wrapper').addEventListener('wheel', (e) => { e.currentTarget.scrollLeft += e.deltaY; });
+    }
+    function saveProfile() { const p = getProfile(); p.name = document.getElementById('profile-name').value.trim(); localStorage.setItem('vitreum_profile', JSON.stringify(p)); refreshGoogleState(); }
+    function pickAvatar(c) { const p = getProfile(); p.color = c; localStorage.setItem('vitreum_profile', JSON.stringify(p)); refreshGoogleState(); }
+    function toggleProfile(e) { if (e) e.stopPropagation(); openSettings('settings-profile'); }
+    function openGoogleSignIn() { closeSettings(); createTab('https://accounts.google.com/'); }
+    function showExitConfirm(n) {
+      const pl = (k, a, b, c) => (k % 10 === 1 && k % 100 !== 11) ? a : (k % 10 >= 2 && k % 10 <= 4 && (k % 100 < 10 || k % 100 >= 20)) ? b : c;
+      document.getElementById('exit-text').textContent = 'Сейчас идёт ' + n + ' ' + pl(n, 'загрузка', 'загрузки', 'загрузок') + '. Если выйти, скачивание прервётся и файл придётся скачивать заново.';
+      const names = Object.values(downloadsMap || {}).filter(d => !d.completed).slice(0, 3).map(d => d.fileName).filter(Boolean);
+      document.getElementById('exit-files').textContent = names.join(', ');
+      document.getElementById('exit-confirm').style.display = 'flex';
+    }
+    function hideExitConfirm() { document.getElementById('exit-confirm').style.display = 'none'; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideExitConfirm(); closeSettings(); } });
+    function toggleGfxCompat(cb) {
+      if (!confirm('Браузер перезапустится, чтобы применить настройку. Продолжить?')) { cb.checked = !cb.checked; return; }
+      window.vitreumAPI?.setGfxCompat(cb.checked);
+    }
+    function clearSiteData() {
+      if (!confirm('Очистить кэш и данные сайтов? Вы выйдете из аккаунтов на сайтах, в том числе из Google.')) return;
+      window.vitreumAPI?.clearSiteData().then(() => { showToast('Данные сайтов очищены', 'success'); refreshGoogleState(); });
+    }
+    document.addEventListener('click', () => { const p = document.getElementById('profile-popup'); if (p) p.style.display = 'none'; });
+    let closedTabs = [];
+    function activeWebview() { return document.querySelector('.tab-pane.active webview'); }
+    function applyZoom(delta) {
+      const wv = activeWebview(); if (!wv) return;
+      try {
+        const level = delta === 0 ? 0 : Math.max(-3, Math.min(5, (wv._zoom ?? getFlags().zoom) + delta));
+        wv._zoom = level; wv.setZoomLevel(level);
+        showToast('Масштаб ' + Math.round(Math.pow(1.2, level) * 100) + '%', 'success');
+      } catch (err) {}
+    }
+    function openFind() { document.getElementById('find-bar').style.display = 'flex'; const i = document.getElementById('find-input'); i.focus(); i.select(); }
+    function closeFind() { document.getElementById('find-bar').style.display = 'none'; const wv = activeWebview(); try { if (wv) wv.stopFindInPage('clearSelection'); } catch (err) {} }
+    function doFind(fresh, forward = true) {
+      const wv = activeWebview(), q = document.getElementById('find-input').value;
+      if (!wv) return;
+      if (!q) { try { wv.stopFindInPage('clearSelection'); } catch (err) {} document.getElementById('find-count').textContent = ''; return; }
+      try { wv.findInPage(q, { findNext: !fresh, forward }); } catch (err) {}
+    }
+    const FLAG_DEFAULTS = { blockPopups: false, allowMedia: true, dnt: false, confirmExit: true, autoShowDownloads: true, anim: true, preloadVk: true, blur: 12, zoom: 0, homepage: '' };
+    function getFlags() { try { return Object.assign({}, FLAG_DEFAULTS, JSON.parse(localStorage.getItem('vitreum_flags') || '{}')); } catch (e) { return Object.assign({}, FLAG_DEFAULTS); } }
+    function applyFlags() {
+      const f = getFlags();
+      document.documentElement.style.setProperty('--glass-blur', f.blur + 'px');
+      document.body.classList.toggle('no-anim', !f.anim);
+      window.vitreumAPI?.setFlags({ blockPopups: f.blockPopups, allowMedia: f.allowMedia, dnt: f.dnt, confirmExit: f.confirmExit });
+    }
+    function setFlag(k, v) { const f = getFlags(); f[k] = v; localStorage.setItem('vitreum_flags', JSON.stringify(f)); applyFlags(); }
+    function setHomepage(v) {
+      v = String(v).trim(); if (v && !/^[a-z]+:\/\//i.test(v)) v = 'https://' + v;
+      setFlag('homepage', v); document.getElementById('homepage-input').value = v;
+      showToast(v ? 'Домашняя страница сохранена' : 'Домашняя страница сброшена', 'success');
+    }
+    function applyZoomAll() { const z = getFlags().zoom; document.querySelectorAll('webview').forEach(wv => { try { wv._zoom = z; wv.setZoomLevel(z); } catch (e) {} }); }
+    function openSettings(sectionId) {
+      const p = document.getElementById('settings-popup'); p.style.display = 'block'; p.scrollTop = 0;
+      if (sectionId) setTimeout(() => { const el = document.getElementById(sectionId); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+      refreshGoogleState();
+    }
+    function closeSettings() { const p = document.getElementById('settings-popup'); if (p) p.style.display = 'none'; }
+    function resetSettings() {
+      if (!confirm('Сбросить настройки оформления к начальным? Закладки, вкладки, заметки и вход в аккаунты сохранятся.')) return;
+      Object.keys(localStorage).filter(k => k.startsWith('vitreum_') && /theme|color|bg|background|accent|clock|flags|restore|default_search|region/.test(k)).forEach(k => localStorage.removeItem(k));
+      location.reload();
+    }
+    function warmUpVk() {
+      if (!navigator.onLine || document.getElementById('vk-warm')) return;
+      const wv = document.createElement('webview');
+      wv.id = 'vk-warm'; wv.setAttribute('partition', 'persist:vk-session'); wv.src = 'https://vk.com';
+      wv.style.cssText = 'position:fixed; left:-2000px; top:0; width:600px; height:400px; opacity:0; pointer-events:none;';
+      document.body.appendChild(wv);
+      const done = () => setTimeout(() => wv.remove(), 4000);
+      wv.addEventListener('did-finish-load', done); wv.addEventListener('did-fail-load', done);
+      setTimeout(() => { if (wv.isConnected) wv.remove(); }, 30000);
+    }
+    function initSettingsUI() {
+      const f = getFlags();
+      const set = (id, v) => { const el = document.getElementById(id); if (!el) return; if (el.type === 'checkbox') el.checked = !!v; else el.value = v; };
+      ['blockPopups', 'allowMedia', 'dnt', 'confirmExit', 'autoShowDownloads', 'anim', 'preloadVk'].forEach(k => set('flag-' + k, f[k]));
+      set('blur-range', f.blur); set('zoom-select', String(f.zoom)); set('homepage-input', f.homepage);
+      const gb = document.getElementById('google-signin-btn'); if (gb) gb.innerHTML = GOOGLE_G + '<span>Войти через аккаунт Google</span>';
+      window.vitreumAPI?.getAbout().then(a => { const el = document.getElementById('about-text'); if (el) el.textContent = 'Vitreum ' + a.app + ' · Chromium ' + a.chrome + ' · Electron ' + a.electron; });
+      applyFlags();
+      if (f.preloadVk) setTimeout(warmUpVk, 6000);
+      warmFavicons(); window.addEventListener('online', warmFavicons);
+    }
+    function escHtml(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function connectVpnByIndex(i) { const s = vpnServersList[i]; if (s) connectToVpnServer(s.raw, s.name); }
+    async function connectToVpnServer(rawConfig, name) {
+      showToast('⏳ Подключение к ' + name + '...', 'info');
+      const res = await window.vitreumAPI.connectVpn({ name: name, raw: rawConfig });
+      if (res.success) {
+        localStorage.setItem('vitreum_vpn_active', 'true');
+        document.getElementById('vpn-status-text').innerHTML = '● Подключено';
+        document.getElementById('vpn-status-text').style.color = '#10b981';
+        showToast('🚀 Вы подключены к ' + name, 'success');
+      } else {
+        showToast('❌ Ошибка: ' + res.error, 'error');
+      }
+    }
+
+    async function toggleVpnPower(checkbox) {
+      if (checkbox.checked) {
+        if (vpnServersList.length === 0) {
+          showToast('❌ Сначала привяжите подписку!', 'error'); checkbox.checked = false; return;
+        }
+      } else {
+        await window.vitreumAPI.disconnectVpn();
+        localStorage.setItem('vitreum_vpn_active', 'false');
+        document.getElementById('vpn-status-text').innerText = '○ Отключено';
+        document.getElementById('vpn-status-text').style.color = '#ef4444';
+        showToast('VPN отключен.');
+      }
+    }
+
+    function openDrawer(type) {
+      const drawer = document.getElementById('side-drawer'), title = document.getElementById('drawer-title');
+      drawer.style.display = 'flex';
+      
+      if (type === 'ai') {
+        title.innerHTML = `<div style="display:flex; align-items:center; gap:6px;"><span>ИИ Ассистент:</span><select class="nav-select" style="font-size:10px; padding:2px;" onchange="changeSidebarAiEngine(this.value)"><option value="https://chat.deepseek.com">DeepSeek</option><option value="https://claude.ai">Claude</option><option value="https://chatgpt.com">ChatGPT</option><option value="https://gemini.google.com">Google Gemini</option><option value="https://alice.yandex.ru">Яндекс Алиса AI</option><option value="https://giga.chat">GigaChat</option><option value="https://copilot.microsoft.com">Copilot</option><option value="https://www.perplexity.ai">Perplexity</option><option value="https://chat.mistral.ai">Mistral</option><option value="https://grok.com">Grok</option><option value="https://chat.qwen.ai">Qwen</option><option value="https://chat.z.ai">Z.ai (GLM)</option></select></div>`;
+        document.getElementById('drawer-body').innerHTML = `<webview src="https://chat.deepseek.com" partition="persist:ai-session" allowpopups style="width:100%; height:100%; border-radius:8px; border:none;"></webview>`;
+      } 
+      else if (type === 'ping') {
+        title.innerText = 'Пинг и скорость';
+        document.getElementById('drawer-body').innerHTML = `<webview src="https://yandex.ru/internet/" partition="persist:vitreum" allowpopups style="width:100%; height:100%; border-radius:8px; border:none;"></webview>`;
+      }
+      else if (type === 'vk') {
+        title.innerText = 'ВКонтакте';
+        document.getElementById('drawer-body').innerHTML = `<webview src="https://vk.com" partition="persist:vk-session" allowpopups style="width:100%; height:100%; border-radius:8px; border:none;"></webview>`;
+      }
+      else if (type === 'vpn') {
+        title.innerText = 'VPN (INCY Client)';
+        const savedSub = localStorage.getItem('vitreum_incy_sub') || '';
+        const isConnected = localStorage.getItem('vitreum_vpn_active') === 'true';
+        
+        document.getElementById('drawer-body').innerHTML = `
+          <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">Ключ подписки INCY:</div>
+          <input type="text" id="vpn-sub-input" class="auth-input" placeholder="https://..." value="${savedSub}">
+          <button class="auth-btn unlocked" style="margin-bottom: 12px;" onclick="saveAndFetchVpn()">Привязать и загрузить</button>
+          
+          <div class="settings-group" style="padding-top: 4px;">
+            <label>Статус туннеля</label>
+            <div class="settings-row">
+              <span id="vpn-status-text" style="color: ${isConnected ? '#10b981' : '#ef4444'}; font-weight: bold;">${isConnected ? '● Подключено' : '○ Отключено'}</span>
+              <input type="checkbox" id="vpn-power-toggle" ${isConnected ? 'checked' : ''} onchange="toggleVpnPower(this)">
+            </div>
+          </div>
+          
+          <label style="font-size: 10px; color: var(--accent-color); margin-top: 10px; display: block; font-weight: bold;">СЕРВЕРА:</label>
+          <div id="vpn-servers-list" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+            <div style="color: #777; font-size: 11px;">Нет данных.</div>
+          </div>
+        `;
+        if (savedSub) saveAndFetchVpn(); 
+      } 
+      else if (type === 'history') {
+        title.innerHTML = `<span>История</span> ${historyList.length > 0 ? '<button onclick="clearAllHistory()" style="background:rgba(239,68,68,0.2); color:#fca5a5; border:none; padding:2px 6px; border-radius:4px; font-size:10px; cursor:pointer; float:right;">Очистить</button>' : ''}`;
+        document.getElementById('drawer-body').innerHTML = historyList.length === 0 ? '<div style="color:#aaa; font-size:11px;">История пуста.</div>' : historyList.map((h, i) => `<div class="history-card"><div class="history-url" onclick="createTab('${h.url}')">${h.url}</div><button class="history-delete-btn" onclick="deleteHistoryItem(${i})">✕</button></div>`).join('');
+      } 
+      else if (type === 'bookmarks') {
+        title.innerText = 'Закладки';
+        document.getElementById('drawer-body').innerHTML = bookmarksList.length === 0 ? '<div style="color:#aaa; font-size:11px;">Нет закладок.</div>' : bookmarksList.map((b, i) => `<div class="history-card"><div class="history-url" onclick="createTab('${b}')">${b}</div><button class="history-delete-btn" onclick="deleteBookmarkItem(${i})">✕</button></div>`).join('');
+      } 
+      else if (type === 'notes') {
+        title.innerText = 'Заметки';
+        const savedNotes = localStorage.getItem('vitreum_notes') || '';
+        document.getElementById('drawer-body').innerHTML = `<textarea id="user-notes-textarea" style="width:100%; height:calc(100vh - 160px); background:rgba(0,0,0,0.3); color:var(--text-color); padding:8px; border-radius:6px; outline:none; border:1px solid rgba(255,255,255,0.1); resize:none;" placeholder="Ваши заметки...">${savedNotes}</textarea><button class="auth-btn unlocked" style="margin-top:10px;" onclick="saveNotes()">💾 Сохранить</button>`;
+      }
+    }
+    
+    function closeDrawer() { document.getElementById('side-drawer').style.display = 'none'; }
+    function toggleSettings(e) { if (e) e.stopPropagation(); const p = document.getElementById('settings-popup'); if (p.style.display === 'block') closeSettings(); else openSettings(); }
+    function goBack() { const wv = document.querySelector('.tab-pane.active webview'); if (wv && wv.canGoBack()) wv.goBack(); else showToast('ℹ️ Назад нельзя'); }
+    function goForward() { const wv = document.querySelector('.tab-pane.active webview'); if (wv && wv.canGoForward()) wv.goForward(); else showToast('ℹ️ Вперед нельзя'); }
+    function reloadPage() { const wv = document.querySelector('.tab-pane.active webview'); if (wv) { wv.reload(); showToast('⟳ Обновление...'); } else location.reload(); }
+  </script>
+</body>
+</html>
